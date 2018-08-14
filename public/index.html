@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<!-- auto refresh: <META HTTP-EQUIV="refresh" CONTENT="300"> -->
+<head>
+  <title>Talkbot2000</title>
+  <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body bgcolor=white>
+<table border=0 cellpadding=10>
+  <tr>
+    <td>
+      hi
+    </td>
+    <td>
+      <h1>Talkbot2000</h1>
+    </td>
+  </tr>
+</table>
+<p>This is the home page for the Talkbot2000 Web application. </p>
+
+<div>
+  <textarea placeholder="...Place text here to increase the knowledge of the bot..." form =rows="4" cols="50" id="knowledgefield" form="txtBoxForm"></textarea>
+  <form id="txtBoxForm" action="javascript:;" onsubmit="increaseKnowledge()"><input type="submit" value="Increase Knowledge"></form>
+</div>
+<div>
+  <p>Place text here to talk to the bot: </p>
+  <form action="javascript:;" onsubmit="getReply();">
+    <input type="text" id="textio">
+    <input type="submit" value="Submit">
+  </form>
+</div>
+<div>
+  <button type="button" onclick="loadDoc()">Load Data</button>
+  <button type="button" onClick="clearDoc()">Clear Dock</button>
+</div>
+
+<div id='textdisplay'></div>
+
+<p>To prove that they work, you can execute either of the following links:</p>
+<ul>
+  <li>To a <a href='http://lucparis.x10host.com'>other website</a>.
+  <li>To a <a href='http://www.google.com'>google</a>.
+</ul>
+
+<script type="text/javascript" src="./ioManager.js"></script>
+<script>
+  function increaseKnowledge(){
+    let knowledgeField = document.getElementById("knowledgefield");
+    let data = knowledgeField.value;
+    console.log("knowledge:", data);
+    appendToDoc(data);
+    knowledgeField.value = '';
+  }
+  function getReply(){
+    let textInputField = document.getElementById("textio");
+    getResponse(textInputField.value);
+    textInputField.value = '';
+  }
+  function clearDoc(){ document.getElementById("textdisplay").innerHTML = ''; }
+</script>
+</body>
+</html>
