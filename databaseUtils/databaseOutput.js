@@ -3,13 +3,14 @@ const db = new sqlite3.Database('./databaseUtils/Words.db');
 const { parseCSV, softmax, maxIndex, tanH, lex_diverse } = require('./dbUtil');
 
 
-function chooseWords(textArray, callback, previous_words = []) {
+function chooseWords(textArray, callback, previous_words = [], max_words = null) {
   perceptronWeightsObjects(textArray, (weightsObjArray) => {
     weightsToWords(weightsObjArray, (reply) => {
-      let replarr = reply.split(' ').concat(previous_words);
-      if (replarr.length > sumOfPositions(weightsObjArray) || lex_diverse(replarr) < 0.4) callback(reply);
+      if (max_words === null) max_words = sumOfPositions(weightsObjArray); // a persistant count for the reply while doing recursive callbacks
+      let replarr = previous_words.concat(reply.split(' '));
+      if (replarr.length > max_words || lex_diverse(replarr) < 0.3) callback(replarr.join(" "));
       else {
-        chooseWords(textArray.slice(-1).concat(replarr), callback, replarr)
+        chooseWords(textArray.slice(-1).concat(replarr), callback, replarr, max_words)
       }
     });
   });
@@ -37,28 +38,40 @@ function indicesAsWords(indices, callback){
   let chosen_count = 0; // tracks async return values
   let words = [];
   let max_count = indices.length;
-  indices.forEach((idx) => {
-    getWordByIndex(idx, (e, row) => {
+  indices.forEach((idxObj) => {
+    getNextWordByIdxObj(idxObj, (e, next_word) => { // idxObj: { prevWID: weightsObjArray[i].wID, index: maxIndex(word_positions) }
       chosen_count++;
-      if(e) console.log(e);
-      else if (row) {
-        words.push(row.word);
-        if (chosen_count === max_count) { // i had this condition as >= max_count but that was causing multiple callbacks which is a node [Error: Can't set headers after they are sent. \n at validateHeader (_http_outgoing.js:494:11) ...]
-          let reply = words.join(" "); //console.log("reply:", reply);
-          callback(reply); // do something with the words using the callback passed to the module at chooseWords()
-        }
+      if(e) { console.log('indicesAsWords, getNextWordByIdxObj', e); }
+      if (next_word) { words.push(next_word); }
+      if (chosen_count === max_count) { // i had this condition as >= max_count but that was causing multiple callbacks which is a node [Error: Can't set headers after they are sent. \n at validateHeader (_http_outgoing.js:494:11) ...]
+        let reply = words.join(" "); //console.log("reply:", reply);
+        callback(reply); // do something with the words using the callback passed to the module at chooseWords()
       }
     });
   });
 }
 
+// idxObj: { prevWID: weightsObjArray[i].wID, index: maxIndex(word_positions) }
 // helper function for indicesAsWords
-function getWordByIndex(idx, callback){
-  db.get("SELECT * FROM WordOrder WHERE id is $idx", { $idx: idx.prevWID }, (e, row) => {
-    callback(e, row);
+function getNextWordByIdxObj(idxObj, callback){
+  db.get("SELECT * FROM NextWord WHERE PrevWID is $idx", { $idx: idxObj.prevWID }, (e, row) => {
+    if (row) {
+      let wordIndex = parseCSV(row.wIDcsv)[idxObj.index];
+      console.log("getNextWordByIdxObj wordIndex:", wordIndex);
+      getWordByIndex(wordIndex, (e, word) => { word ? callback(e, word) : callback(e, "..."); });
+    }
+    else callback(e, "...");
   });
 }
 
+function getWordByIndex(index, useWordCallback){
+  db.get("SELECT * FROM WordOrder WHERE id is $idx", { $idx: index }, (e, row) => {
+    row ? useWordCallback(e, row.word) : useWordCallback(e, "...");
+  });
+}
+
+// returns this crazy object: { prevWID: weightsObjArray[i].wID, index: maxIndex(word_positions) }
+// uses some neural network stuff to return indices of words
 function numbersToWordIndices(weightsObjArray, handle_indices){
   //console.log('weights', weightsObjArray);
   let words_indices = [];
@@ -86,6 +99,7 @@ function numbersToWordIndices(weightsObjArray, handle_indices){
 function nextWordPositions(five_weightsArrays){
   let nextProbabilities = five_weightsArrays[five_weightsArrays.length-1].map((weight) => weight); // initialize with array of 0s to be summed to probabilities in neural network
   for(let i = 0; i < five_weightsArrays.length - 1; ++i) { // sum up product of each wordweights * prevWordWeights into nextProbabilities
+    console.log('nxt probs',nextProbabilities);
     nextProbabilities = nxtWordProbs(nextProbabilities, five_weightsArrays[i]);
   }
   return softmax(nextProbabilities);
@@ -104,10 +118,10 @@ function nxtWordProbs(nextProbabilities, weights){
 // return values objects from database corresponding to the words input
 function perceptronWeightsObjects(words, callback){
   let all_weights = [];
-  let itemsProcessed = 0;
+  let itemsProcessed = 0;       // counter to track when all async database queries have been processed
   words.forEach((w) => {
     getPerceptronWeightsByW(w, (weights) => {
-      itemsProcessed++;
+      itemsProcessed++;         // track the number of times this nameless callback has been called
       if(weights) { if (weights['weights'].length > 0) all_weights.push(weights); }
       if(itemsProcessed === words.length) { // console.log(all_weights);
         callback(all_weights); } // all the weights have been assembled
