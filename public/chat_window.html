@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Simple Chatbox</title>
+<link rel="stylesheet" href="css/chatbox_style.css">
+<link rel="stylesheet" href="css/stylesheet.css">
+</head>
+<body>
+<div>
+  <textarea placeholder="...submit text here to increase the knowledge of the bot..." form =rows="4" cols="50" id="knowledgefield" form="txtBoxForm"></textarea>
+  <form id="txtBoxForm" action="javascript:;" onsubmit="increaseKnowledge()"><input type="submit" value="Increase Knowledge"></form>
+</div>
+<div class="chat-box">
+<div class="chat-closed"> Chat Now </div>
+<div class="chat-header hide"><div class="box"></div>Chat Bot</div>
+<div class="chat-content hide" id='textdisplay'></div>
+<div class="chat-footer hide">
+<form action="javascript:;" onsubmit="getReply();">
+    <input type="text" id="textio">
+    <input type="image" src="images/ruby.png" alt="Submit" id="submit_btn">
+  </form>
+<div>
+</div>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script type="text/javascript">
+$(document).ready(function(){
+    $(".chat-closed").on("click",function(e){
+        $(".chat-header,.chat-content,.chat-footer").removeClass("hide");
+        $(this).addClass("hide");
+    });
+
+    $(".chat-header").on("click",function(e){
+        $(".chat-header,.chat-content,.chat-footer").addClass("hide");
+        $(".chat-closed").removeClass("hide");
+    });
+});
+</script>
+<script type="text/javascript" src="./ioManager.js"></script>
+<script>
+  function increaseKnowledge(){
+    let knowledgeField = document.getElementById("knowledgefield");
+    let data = knowledgeField.value;
+    console.log("knowledge:", data);
+    appendToDoc(data);
+    knowledgeField.value = '';
+  }
+  function getReply(){
+    let textInputField = document.getElementById("textio");
+    getResponse(textInputField.value, true);
+    textInputField.value = '';
+  }
+  function clearDoc(){ document.getElementById("textdisplay").innerHTML = ''; }
+</script>
+</body>
+
+</html>
